@@ -24,7 +24,7 @@ model = dict(
         add_extra_convs='on_input'),
     bbox_head=dict(
         type='FoveaHead',
-        num_classes=80,
+        num_classes=1,
         in_channels=256,
         stacked_convs=4,
         feat_channels=256,
@@ -47,6 +47,6 @@ model = dict(
         score_thr=0.05,
         nms=dict(type='nms', iou_threshold=0.5),
         max_per_img=100))
-data = dict(samples_per_gpu=4, workers_per_gpu=4)
+data = dict(samples_per_gp=2, workers_per_gpu=2)
 # optimizer
-optimizer = dict(type='SGD', lr=0.01, momentum=0.9, weight_decay=0.0001)
+optimizer = dict(type='SGD', lr=0.001, momentum=0.9, weight_decay=0.0001)

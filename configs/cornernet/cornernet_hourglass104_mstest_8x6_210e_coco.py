@@ -15,7 +15,7 @@ model = dict(
     neck=None,
     bbox_head=dict(
         type='CornerHead',
-        num_classes=80,
+        num_classes=1,
         in_channels=256,
         num_feat_levels=2,
         corner_emb_channels=1,
@@ -49,12 +49,12 @@ train_pipeline = [
         hue_delta=18),
     dict(
         type='RandomCenterCropPad',
-        crop_size=(511, 511),
+        crop_size=(256, 256),
         ratios=(0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3),
         test_mode=False,
         test_pad_mode=None,
         **img_norm_cfg),
-    dict(type='Resize', img_scale=(511, 511), keep_ratio=False),
+    dict(type='Resize', img_scale=(256, 256), keep_ratio=False),
     dict(type='RandomFlip', flip_ratio=0.5),
     dict(type='Normalize', **img_norm_cfg),
     dict(type='DefaultFormatBundle'),
@@ -87,24 +87,27 @@ test_pipeline = [
         ])
 ]
 data = dict(
-    samples_per_gpu=6,
-    workers_per_gpu=3,
+    samples_per_gpu=2,
+    workers_per_gpu=2,
     train=dict(pipeline=train_pipeline),
     val=dict(pipeline=test_pipeline),
     test=dict(pipeline=test_pipeline))
 # optimizer
-optimizer = dict(type='Adam', lr=0.0005)
+#optimizer = dict(type='Adam', lr=0.004)
+optimizer = dict(type='SGD', lr=0.004, momentum=0.9, weight_decay=0.0001)
 optimizer_config = dict(grad_clip=dict(max_norm=35, norm_type=2))
 # learning policy
 lr_config = dict(
     policy='step',
-    warmup='linear',
-    warmup_iters=500,
-    warmup_ratio=1.0 / 3,
-    step=[180])
-runner = dict(type='EpochBasedRunner', max_epochs=210)
+    #warmup='linear',
+    warmup='constant',
+    warmup_iters=2000,
+    warmup_ratio=1.0 /3,
+    #step=[180])
+    step=[50, 60])
+runner = dict(type='EpochBasedRunner', max_epochs=60)
 
 # NOTE: `auto_scale_lr` is for automatically scaling LR,
 # USER SHOULD NOT CHANGE ITS VALUES.
 # base_batch_size = (8 GPUs) x (6 samples per GPU)
-auto_scale_lr = dict(base_batch_size=48)
+#auto_scale_lr = dict(base_batch_size=8)

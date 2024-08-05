@@ -1,6 +1,7 @@
 _base_ = [
     '../_base_/datasets/coco_detection.py', '../_base_/default_runtime.py'
 ]
+load_from = 'mmdetection/deformable_detr_r50_16x2_50e_coco_20210419_220030-a12b9512.pth'
 model = dict(
     type='DETR',
     backbone=dict(
@@ -15,7 +16,7 @@ model = dict(
         init_cfg=dict(type='Pretrained', checkpoint='torchvision://resnet50')),
     bbox_head=dict(
         type='DETRHead',
-        num_classes=80,
+        num_classes=1,
         in_channels=2048,
         transformer=dict(
             type='Transformer',
@@ -81,16 +82,15 @@ train_pipeline = [
         policies=[[
             dict(
                 type='Resize',
-                img_scale=[(480, 1333), (512, 1333), (544, 1333), (576, 1333),
-                           (608, 1333), (640, 1333), (672, 1333), (704, 1333),
-                           (736, 1333), (768, 1333), (800, 1333)],
+                img_scale=[(180, 500), (212, 500), (344, 500),
+                               (476, 500)],
                 multiscale_mode='value',
                 keep_ratio=True)
         ],
                   [
                       dict(
                           type='Resize',
-                          img_scale=[(400, 1333), (500, 1333), (600, 1333)],
+                          img_scale=[(100, 2000), (200, 2000), (300, 2000)],
                           multiscale_mode='value',
                           keep_ratio=True),
                       dict(
@@ -100,10 +100,7 @@ train_pipeline = [
                           allow_negative_crop=True),
                       dict(
                           type='Resize',
-                          img_scale=[(480, 1333), (512, 1333), (544, 1333),
-                                     (576, 1333), (608, 1333), (640, 1333),
-                                     (672, 1333), (704, 1333), (736, 1333),
-                                     (768, 1333), (800, 1333)],
+                          img_scale=[(100, 2000), (200, 2000), (300, 2000)],
                           multiscale_mode='value',
                           override=True,
                           keep_ratio=True)
@@ -120,7 +117,7 @@ test_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(
         type='MultiScaleFlipAug',
-        img_scale=(1333, 800),
+        img_scale=(344, 500),
         flip=False,
         transforms=[
             dict(type='Resize', keep_ratio=True),
@@ -132,15 +129,15 @@ test_pipeline = [
         ])
 ]
 data = dict(
-    samples_per_gpu=2,
-    workers_per_gpu=2,
+    samples_per_gpu=1,
+    workers_per_gpu=1,
     train=dict(pipeline=train_pipeline),
     val=dict(pipeline=test_pipeline),
     test=dict(pipeline=test_pipeline))
 # optimizer
 optimizer = dict(
     type='AdamW',
-    lr=0.0001,
+    lr=2e-5,
     weight_decay=0.0001,
     paramwise_cfg=dict(
         custom_keys={'backbone': dict(lr_mult=0.1, decay_mult=1.0)}))

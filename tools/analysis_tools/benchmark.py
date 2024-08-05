@@ -15,6 +15,7 @@ from mmdet.datasets import (build_dataloader, build_dataset,
 from mmdet.models import build_detector
 from mmdet.utils import replace_cfg_vals, update_data_root
 
+#python -m torch.distributed.launch --nproc_per_node=1 --master_port=29500 mmdetection/tools/analysis_tools/benchmark.py mmdetection/configs/deformable_detr/deformable_detr_r50_16x2_50e_coco.py /media/ExtDisk/duibihr/defor/60.pth --launcher pytorch
 
 def parse_args():
     parser = argparse.ArgumentParser(description='MMDet benchmark a model')
@@ -193,3 +194,7 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
+#python mmdetection/tools/analysis_tools/benchmark.py mmdetection/configs/fcos/fcos_r50_caffe_fpn_gn-head_1x_coco.py /media/ExtDisk/yxt/yxt/79hrsid/35.pth
+#python -m torch.distributed.launch --nproc_per_node=1 --master_port=29500 mmdetection/tools/analysis_tools/benchmark.py mmdetection/configs/fcos/fcos_r50_caffe_fpn_gn-head_1x_coco.py /media/ExtDisk/yxt/yxt/79hrsid/35.pth --launcher pytorch

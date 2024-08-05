@@ -23,7 +23,7 @@ model = dict(
         num_outs=5),
     bbox_head=dict(
         type='ATSSHead',
-        num_classes=80,
+        num_classes=2,
         in_channels=256,
         stacked_convs=4,
         feat_channels=256,
@@ -59,4 +59,4 @@ model = dict(
         nms=dict(type='nms', iou_threshold=0.6),
         max_per_img=100))
 # optimizer
-optimizer = dict(type='SGD', lr=0.01, momentum=0.9, weight_decay=0.0001)
+optimizer = dict(type='SGD', lr=0.004, momentum=0.9, weight_decay=0.0001)

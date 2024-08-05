@@ -4,7 +4,7 @@ model = dict(
     type='FSAF',
     bbox_head=dict(
         type='FSAFHead',
-        num_classes=80,
+        num_classes=1,
         in_channels=256,
         stacked_convs=4,
         feat_channels=256,
@@ -43,6 +43,6 @@ model = dict(
         allowed_border=-1,
         pos_weight=-1,
         debug=False))
-optimizer = dict(type='SGD', lr=0.01, momentum=0.9, weight_decay=0.0001)
+optimizer = dict(type='SGD', lr=0.004, momentum=0.9, weight_decay=0.0001)
 optimizer_config = dict(
     _delete_=True, grad_clip=dict(max_norm=10, norm_type=2))

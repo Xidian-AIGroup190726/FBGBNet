@@ -304,7 +304,7 @@ class DeformableDETRHead(DETRHead):
         """
         cls_scores = all_cls_scores[-1]
         bbox_preds = all_bbox_preds[-1]
-
+        #print("p",cls_scores)
         result_list = []
         for img_id in range(len(img_metas)):
             cls_score = cls_scores[img_id]

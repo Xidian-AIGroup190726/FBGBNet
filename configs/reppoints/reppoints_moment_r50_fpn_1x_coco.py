@@ -23,7 +23,7 @@ model = dict(
         num_outs=5),
     bbox_head=dict(
         type='RepPointsHead',
-        num_classes=80,
+        num_classes=1,
         in_channels=256,
         feat_channels=256,
         point_feat_channels=256,
@@ -64,4 +64,4 @@ model = dict(
         score_thr=0.05,
         nms=dict(type='nms', iou_threshold=0.5),
         max_per_img=100))
-optimizer = dict(lr=0.01)
+optimizer = dict(lr=0.004)

@@ -25,7 +25,7 @@ model = dict(
         relu_before_extra_convs=True),
     bbox_head=dict(
         type='VFNetHead',
-        num_classes=80,
+        num_classes=1,
         in_channels=256,
         stacked_convs=3,
         feat_channels=256,
@@ -57,14 +57,14 @@ model = dict(
         max_per_img=100))
 
 # data setting
-dataset_type = 'CocoDataset'
-data_root = 'data/coco/'
+#dataset_type = 'CocoDataset'
+#data_root = '/media/ExtDisk/yxt/nwpu/'
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
 train_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(type='LoadAnnotations', with_bbox=True),
-    dict(type='Resize', img_scale=(1333, 800), keep_ratio=True),
+    dict(type='Resize', img_scale=(500,500), keep_ratio=True),
     dict(type='RandomFlip', flip_ratio=0.5),
     dict(type='Normalize', **img_norm_cfg),
     dict(type='Pad', size_divisor=32),
@@ -75,7 +75,7 @@ test_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(
         type='MultiScaleFlipAug',
-        img_scale=(1333, 800),
+        img_scale=(500, 500),
         flip=False,
         transforms=[
             dict(type='Resize', keep_ratio=True),
@@ -87,15 +87,16 @@ test_pipeline = [
         ])
 ]
 data = dict(
-    samples_per_gpu=2,
-    workers_per_gpu=2,
+    samples_per_gpu=8,
+    workers_per_gpu=8,
     train=dict(pipeline=train_pipeline),
     val=dict(pipeline=test_pipeline),
     test=dict(pipeline=test_pipeline))
 
 # optimizer
 optimizer = dict(
-    lr=0.01, paramwise_cfg=dict(bias_lr_mult=2., bias_decay_mult=0.))
+    lr=0.001, paramwise_cfg=dict(bias_lr_mult=2., bias_decay_mult=0.))
+#optimizer = dict(type='SGD', lr=0.001, momentum=0.93, weight_decay=0.0005)
 optimizer_config = dict(grad_clip=None)
 # learning policy
 lr_config = dict(
@@ -103,5 +104,5 @@ lr_config = dict(
     warmup='linear',
     warmup_iters=500,
     warmup_ratio=0.1,
-    step=[8, 11])
-runner = dict(type='EpochBasedRunner', max_epochs=12)
+    step=[40, 60])
+runner = dict(type='EpochBasedRunner', max_epochs=60)

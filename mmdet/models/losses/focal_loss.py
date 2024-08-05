@@ -8,6 +8,7 @@ from ..builder import LOSSES
 from .utils import weight_reduce_loss
 
 
+
 # This method is only for debugging
 def py_sigmoid_focal_loss(pred,
                           target,
@@ -84,6 +85,7 @@ def py_focal_loss_with_prob(pred,
     """
     num_classes = pred.size(1)
     target = F.one_hot(target, num_classes=num_classes + 1)
+    print(target)
     target = target[:, :num_classes]
 
     target = target.type_as(pred)

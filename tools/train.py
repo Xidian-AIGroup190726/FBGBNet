@@ -202,6 +202,17 @@ def main():
     # set random seeds
     seed = init_random_seed(args.seed, device=cfg.device)
     seed = seed + dist.get_rank() if args.diff_seed else seed
+    #seed = 236456900#ssdd best
+    #seed=1880650744
+    # seed = 499750125 #ssdd pso_second
+    #seed = 281757165
+    #seed = 42114240 #hrsid
+    #seed = 1324709290 #yuan
+    #seed = 2112788581 #ssdd second
+    #seed = 1598527792 #0.96ssdd
+    #seed=406874339
+    #seed =228242913 #a=0.5 ssdd yes_atimage
+    #seed =1161714630 #a=0.6 ssdd no_at yes_atimage
     logger.info(f'Set random seed to {seed}, '
                 f'deterministic: {args.deterministic}')
     set_random_seed(seed, deterministic=args.deterministic)

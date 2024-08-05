@@ -1,6 +1,6 @@
 _base_ = ['../_base_/schedules/schedule_1x.py', '../_base_/default_runtime.py']
 
-img_scale = (640, 640)  # height, width
+img_scale = (256, 256)  # height, width
 
 # model settings
 model = dict(
@@ -15,14 +15,15 @@ model = dict(
         out_channels=128,
         num_csp_blocks=1),
     bbox_head=dict(
-        type='YOLOXHead', num_classes=80, in_channels=128, feat_channels=128),
+        type='YOLOXHead', num_classes=1, in_channels=128, feat_channels=128),
     train_cfg=dict(assigner=dict(type='SimOTAAssigner', center_radius=2.5)),
     # In order to align the source code, the threshold of the val phase is
     # 0.01, and the threshold of the test phase is 0.001.
     test_cfg=dict(score_thr=0.01, nms=dict(type='nms', iou_threshold=0.65)))
 
 # dataset settings
-data_root = 'data/coco/'
+#data_root = 'ssdd_coco-20221019/ssdd_coco/'
+data_root = '/media/ExtDisk/yxt/sardataset/'
 dataset_type = 'CocoDataset'
 
 train_pipeline = [
@@ -57,8 +58,11 @@ train_dataset = dict(
     type='MultiImageMixDataset',
     dataset=dict(
         type=dataset_type,
-        ann_file=data_root + 'annotations/instances_train2017.json',
-        img_prefix=data_root + 'train2017/',
+        ann_file=data_root + 'train.json',
+        # ann_file=data_root + 'annotations/train2017.json',
+        # img_prefix=data_root + 'after_train_image79',
+        # img_prefix=data_root + 'train1/after_trainCR94',
+        img_prefix=data_root + 'images',
         pipeline=[
             dict(type='LoadImageFromFile'),
             dict(type='LoadAnnotations', with_bbox=True)
@@ -87,35 +91,40 @@ test_pipeline = [
 
 data = dict(
     samples_per_gpu=8,
-    workers_per_gpu=4,
+    workers_per_gpu=8,
     persistent_workers=True,
     train=train_dataset,
     val=dict(
         type=dataset_type,
-        ann_file=data_root + 'annotations/instances_val2017.json',
-        img_prefix=data_root + 'val2017/',
+        ann_file=data_root + 'test.json',
+        # ann_file=data_root + 'annotations/test2017.json',
+        # img_prefix=data_root + 'val1/after_valCR94',
+        # img_prefix=data_root + 'after_test_image79',
+        img_prefix=data_root + 'images',
         pipeline=test_pipeline),
     test=dict(
         type=dataset_type,
-        ann_file=data_root + 'annotations/instances_val2017.json',
-        img_prefix=data_root + 'val2017/',
+        ann_file=data_root + 'test.json',
+        # img_prefix=data_root + 'after_test_image
+        # img_prefix=data_root + 'test1/after_testCR94',
+        img_prefix=data_root + 'images',
         pipeline=test_pipeline))
 
 # optimizer
 # default 8 gpu
 optimizer = dict(
     type='SGD',
-    lr=0.01,
+    lr=0.0004,
     momentum=0.9,
-    weight_decay=5e-4,
+    weight_decay=5e-1,
     nesterov=True,
     paramwise_cfg=dict(norm_decay_mult=0., bias_decay_mult=0.))
 optimizer_config = dict(grad_clip=None)
 
-max_epochs = 300
-num_last_epochs = 15
+max_epochs = 60
+num_last_epochs = 10
 resume_from = None
-interval = 10
+interval = 1
 
 # learning policy
 lr_config = dict(
@@ -130,7 +139,7 @@ lr_config = dict(
     min_lr_ratio=0.05)
 
 runner = dict(type='EpochBasedRunner', max_epochs=max_epochs)
-
+#evaluation = dict(interval=1, metric='bbox',save_best='auto')
 custom_hooks = [
     dict(
         type='YOLOXModeSwitchHook',
@@ -155,11 +164,11 @@ evaluation = dict(
     # The evaluation interval is 1 when running epoch is greater than
     # or equal to ‘max_epochs - num_last_epochs’.
     interval=interval,
-    dynamic_intervals=[(max_epochs - num_last_epochs, 1)],
+    #dynamic_intervals=[(max_epochs - num_last_epochs, 1)],
     metric='bbox')
-log_config = dict(interval=50)
+log_config = dict(interval=20)
 
 # NOTE: `auto_scale_lr` is for automatically scaling LR,
 # USER SHOULD NOT CHANGE ITS VALUES.
 # base_batch_size = (8 GPUs) x (8 samples per GPU)
-auto_scale_lr = dict(base_batch_size=64)
+#auto_scale_lr = dict(base_batch_size=64)

@@ -1,6 +1,7 @@
 _base_ = [
     '../_base_/datasets/coco_detection.py', '../_base_/default_runtime.py'
 ]
+load_from = 'mmdetection/deformable_detr_r50_16x2_50e_coco_20210419_220030-a12b9512.pth'
 model = dict(
     type='DeformableDETR',
     backbone=dict(
@@ -24,7 +25,7 @@ model = dict(
     bbox_head=dict(
         type='DeformableDETRHead',
         num_query=300,
-        num_classes=80,
+        num_classes=1,
         in_channels=2048,
         sync_cls_avg_factor=True,
         as_two_stage=False,
@@ -95,10 +96,8 @@ train_pipeline = [
             [
                 dict(
                     type='Resize',
-                    img_scale=[(480, 1333), (512, 1333), (544, 1333),
-                               (576, 1333), (608, 1333), (640, 1333),
-                               (672, 1333), (704, 1333), (736, 1333),
-                               (768, 1333), (800, 1333)],
+                    img_scale=[(180, 500), (212, 500), (344, 500),
+                               (476, 500)],
                     multiscale_mode='value',
                     keep_ratio=True)
             ],
@@ -107,7 +106,7 @@ train_pipeline = [
                     type='Resize',
                     # The radio of all image in train dataset < 7
                     # follow the original impl
-                    img_scale=[(400, 4200), (500, 4200), (600, 4200)],
+                    img_scale=[(100, 2000), (200, 2000), (300, 2000)],
                     multiscale_mode='value',
                     keep_ratio=True),
                 dict(
@@ -117,10 +116,7 @@ train_pipeline = [
                     allow_negative_crop=True),
                 dict(
                     type='Resize',
-                    img_scale=[(480, 1333), (512, 1333), (544, 1333),
-                               (576, 1333), (608, 1333), (640, 1333),
-                               (672, 1333), (704, 1333), (736, 1333),
-                               (768, 1333), (800, 1333)],
+                    img_scale=[(100, 2000), (200, 2000), (300, 2000)],
                     multiscale_mode='value',
                     override=True,
                     keep_ratio=True)
@@ -138,7 +134,7 @@ test_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(
         type='MultiScaleFlipAug',
-        img_scale=(1333, 800),
+        img_scale=(344, 500),
         flip=False,
         transforms=[
             dict(type='Resize', keep_ratio=True),
@@ -150,8 +146,8 @@ test_pipeline = [
         ])
 ]
 data = dict(
-    samples_per_gpu=2,
-    workers_per_gpu=2,
+    samples_per_gpu=1,
+    workers_per_gpu=1,
     train=dict(filter_empty_gt=False, pipeline=train_pipeline),
     val=dict(pipeline=test_pipeline),
     test=dict(pipeline=test_pipeline))
@@ -169,7 +165,7 @@ optimizer = dict(
 optimizer_config = dict(grad_clip=dict(max_norm=0.1, norm_type=2))
 # learning policy
 lr_config = dict(policy='step', step=[40])
-runner = dict(type='EpochBasedRunner', max_epochs=50)
+runner = dict(type='EpochBasedRunner', max_epochs=60)
 
 # NOTE: `auto_scale_lr` is for automatically scaling LR,
 # USER SHOULD NOT CHANGE ITS VALUES.

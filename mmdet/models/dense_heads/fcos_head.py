@@ -12,7 +12,6 @@ from .anchor_free_head import AnchorFreeHead
 
 INF = 1e8
 
-
 @HEADS.register_module()
 class FCOSHead(AnchorFreeHead):
     """Anchor-free head used in `FCOS <https://arxiv.org/abs/1904.01355>`_.

@@ -14,7 +14,7 @@ model = dict(
         out_channels=[512, 256, 128]),
     bbox_head=dict(
         type='YOLOV3Head',
-        num_classes=80,
+        num_classes=2,
         in_channels=[512, 256, 128],
         out_channels=[1024, 512, 256],
         anchor_generator=dict(
@@ -57,7 +57,8 @@ model = dict(
         max_per_img=100))
 # dataset settings
 dataset_type = 'CocoDataset'
-data_root = 'data/coco/'
+#data_root = 'data/coco/'
+data_root = 'ssdd_coco-20221019/ssdd_coco/'
 img_norm_cfg = dict(mean=[0, 0, 0], std=[255., 255., 255.], to_rgb=True)
 train_pipeline = [
     dict(type='LoadImageFromFile', to_float32=True),
@@ -71,7 +72,7 @@ train_pipeline = [
         type='MinIoURandomCrop',
         min_ious=(0.4, 0.5, 0.6, 0.7, 0.8, 0.9),
         min_crop_size=0.3),
-    dict(type='Resize', img_scale=[(320, 320), (608, 608)], keep_ratio=True),
+    dict(type='Resize', img_scale=[(500, 500), (500, 500)], keep_ratio=True),
     dict(type='RandomFlip', flip_ratio=0.5),
     dict(type='PhotoMetricDistortion'),
     dict(type='Normalize', **img_norm_cfg),
@@ -83,7 +84,7 @@ test_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(
         type='MultiScaleFlipAug',
-        img_scale=(608, 608),
+        img_scale=(500, 500),
         flip=False,
         transforms=[
             dict(type='Resize', keep_ratio=True),
@@ -96,37 +97,43 @@ test_pipeline = [
 ]
 data = dict(
     samples_per_gpu=8,
-    workers_per_gpu=4,
+    workers_per_gpu=8,
     train=dict(
         type=dataset_type,
-        ann_file=data_root + 'annotations/instances_train2017.json',
-        img_prefix=data_root + 'train2017/',
+        ann_file=data_root + 'train1/train.json',
+        img_prefix=data_root + 'train1/train_image',
         pipeline=train_pipeline),
     val=dict(
         type=dataset_type,
-        ann_file=data_root + 'annotations/instances_val2017.json',
-        img_prefix=data_root + 'val2017/',
+        ann_file=data_root + 'val1/val.json',
+        # ann_file=data_root + 'annotations/test2017.json',
+        # img_prefix=data_root + 'val1/after_valCR94',
+        # img_prefix=data_root + 'after_test_image79',
+        img_prefix=data_root + 'val1/val_image',
         pipeline=test_pipeline),
     test=dict(
         type=dataset_type,
-        ann_file=data_root + 'annotations/instances_val2017.json',
-        img_prefix=data_root + 'val2017/',
+        ann_file=data_root + 'test1/test.json',
+        # img_prefix=data_root + 'after_test_image
+        # img_prefix=data_root + 'test1/after_testCR94',
+        img_prefix=data_root + 'test1/test_image',
+        # img_prefix=data_root + 'after_test_image79',
         pipeline=test_pipeline))
 # optimizer
-optimizer = dict(type='SGD', lr=0.001, momentum=0.9, weight_decay=0.0005)
+optimizer = dict(type='SGD', lr=0.001, momentum=0.9, weight_decay=0.0001)
 optimizer_config = dict(grad_clip=dict(max_norm=35, norm_type=2))
 # learning policy
 lr_config = dict(
     policy='step',
-    warmup='linear',
-    warmup_iters=2000,  # same as burn-in in darknet
-    warmup_ratio=0.1,
-    step=[218, 246])
+    warmup='constant',
+    warmup_iters=500,  # same as burn-in in darknet
+    warmup_ratio=1.0 / 3,
+    step=[50, 60])
 # runtime settings
-runner = dict(type='EpochBasedRunner', max_epochs=273)
-evaluation = dict(interval=1, metric=['bbox'])
+runner = dict(type='EpochBasedRunner', max_epochs=60)
+evaluation = dict(interval=1, metric='bbox',save_best='auto')
 
 # NOTE: `auto_scale_lr` is for automatically scaling LR,
 # USER SHOULD NOT CHANGE ITS VALUES.
 # base_batch_size = (8 GPUs) x (8 samples per GPU)
-auto_scale_lr = dict(base_batch_size=64)
+#auto_scale_lr = dict(base_batch_size=64)
