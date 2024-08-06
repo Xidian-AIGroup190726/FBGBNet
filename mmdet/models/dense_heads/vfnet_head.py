@@ -7,21 +7,25 @@ import torch.nn as nn
 from mmcv.cnn import ConvModule, Scale
 from mmcv.ops import DeformConv2d
 from mmcv.runner import force_fp32
-
+import torch.nn.functional as F
 from mmdet.core import (MlvlPointGenerator, bbox_overlaps, build_assigner,
                         build_prior_generator, build_sampler, multi_apply,
                         reduce_mean)
 from ..builder import HEADS, build_loss
 from .atss_head import ATSSHead
 from .fcos_head import FCOSHead
-
+import math
+import random
+from skimage.metrics import structural_similarity as compare_ssim
+from torchmetrics import StructuralSimilarityIndexMeasure
+import matplotlib.pyplot as plt
 INF = 1e8
 
 
 @HEADS.register_module()
 class VFNetHead(ATSSHead, FCOSHead):
     """Head of `VarifocalNet (VFNet): An IoU-aware Dense Object
-    Detector.<https://arxiv.org/abs/2008.13367>`_.
+    Detector.<https://arxiv.org/abs/2008.13367>;`_.
 
     The VFNet predicts IoU-aware classification scores which mix the
     object presence confidence and object localization accuracy as the
@@ -112,6 +116,14 @@ class VFNetHead(ATSSHead, FCOSHead):
                          bias_prob=0.01)),
                  **kwargs):
         # dcn base offsets, adapted from reppoints_head.py
+        global epoch
+        epoch = []
+        global noises
+        noises=[]
+        global noisess
+        noisess=[]
+        global iters
+        iters=[]
         self.num_dconv_points = 9
         self.dcn_kernel = int(np.sqrt(self.num_dconv_points))
         self.dcn_pad = int((self.dcn_kernel - 1) / 2)
@@ -203,6 +215,7 @@ class VFNetHead(ATSSHead, FCOSHead):
             norm_cfg=self.norm_cfg,
             bias=self.conv_bias)
         self.vfnet_reg = nn.Conv2d(self.feat_channels, 4, 3, padding=1)
+        self.conv_noise = nn.Conv2d(self.feat_channels, 1, 3, padding=1)
         self.scales = nn.ModuleList([Scale(1.0) for _ in self.strides])
 
         self.vfnet_reg_refine_dconv = DeformConv2d(
@@ -267,7 +280,7 @@ class VFNetHead(ATSSHead, FCOSHead):
         """
         cls_feat = x
         reg_feat = x
-
+        noise = self.conv_noise(x)
         for cls_layer in self.cls_convs:
             cls_feat = cls_layer(cls_feat)
 
@@ -300,6 +313,13 @@ class VFNetHead(ATSSHead, FCOSHead):
         # predict the iou-aware cls score
         cls_feat = self.relu(self.vfnet_cls_dconv(cls_feat, dcn_offset))
         cls_score = self.vfnet_cls(cls_feat)
+        if(len(noises)>=5):
+            noises.clear()
+        cls_score = cls_score-noise
+        noises.append(noise)
+        
+        
+        iters.append(0)
 
         if self.training:
             return cls_score, bbox_pred, bbox_pred_refine
@@ -380,6 +400,7 @@ class VFNetHead(ATSSHead, FCOSHead):
         Returns:
             dict[str, Tensor]: A dictionary of loss components.
         """
+        #
         assert len(cls_scores) == len(bbox_preds) == len(bbox_preds_refine)
         featmap_sizes = [featmap.size()[-2:] for featmap in cls_scores]
         all_level_points = self.fcos_prior_generator.grid_priors(
@@ -390,6 +411,27 @@ class VFNetHead(ATSSHead, FCOSHead):
 
         num_imgs = cls_scores[0].size(0)
         # flatten cls_scores, bbox_preds and bbox_preds_refine
+        img_shapes = []
+        for i in range(len(img_metas)):
+            img_shapes.append((img_metas[i])['img_shape'])
+        name = []
+        for i in range(0,len(gt_bboxes)):
+            name.append(img_metas[i]['ori_filename'])
+          ####feature map
+        if(len(iters)>=40000000):
+         for i in range(len(cls_scores)):
+            for j in range(len(cls_scores[i])):
+                if i==0:
+                   #for g in range(0):
+                     b=(cls_scores[i][j][0]).cpu().detach().numpy()
+                     #print("bbox:",name[j],b)
+                     plt.matshow(b,cmap='jet')
+                     plt.title(name[j])
+                     plt.savefig('/media/ExtDisk/feat/'+str(name[j])+'.jpg')#+str(g)+'.jpg')
+             ####feature map
+        feature_target,noise_target = self.Background_Feature(featmap_sizes, gt_bboxes, all_level_points, img_shapes)
+        noise_loss = self.loss_B(noises, noise_target)
+        noises.clear()
         flatten_cls_scores = [
             cls_score.permute(0, 2, 3,
                               1).reshape(-1,
@@ -495,8 +537,112 @@ class VFNetHead(ATSSHead, FCOSHead):
         return dict(
             loss_cls=loss_cls,
             loss_bbox=loss_bbox,
-            loss_bbox_rf=loss_bbox_refine)
+            loss_bbox_rf=loss_bbox_refine,
+            loss_noise = noise_loss)
 
+    def Background_Feature(self, featmap_sizes, gt_bboxes, all_level_points, img_shapes):
+        stride1 = [8,16,32, 64, 128]
+        feature_target = []
+        noise_target = []
+        dev = torch.device('cuda:1')
+        for i in range(len(featmap_sizes)):
+            save_feature_weight = []
+            save_noise = []
+            for j in range(len(gt_bboxes)):
+                 p = -1
+                #if res[j]>=0:
+                #if stride1[0]>0:
+                 weights = torch.zeros(featmap_sizes[i][0], featmap_sizes[i][1], dtype=torch.float32,
+                                      device=dev)
+                 noise = 2*torch.ones(featmap_sizes[i][0], featmap_sizes[i][1], dtype=torch.float32,
+                                      device=dev)
+                 sizes = (img_shapes[j][0], img_shapes[j][1])
+                 for l in range(len(gt_bboxes[j])):
+                   box2 = (gt_bboxes[j])[l]
+                   weight1 = weights
+                   noise1 = noise
+                   range_box = max(box2[2]-box2[0],box2[3]-box2[1])
+                   if(range_box<=32):
+                     m =0
+                   else:
+                     m=0
+                   xl = box2[0]-m if (box2[0]-m)>=0 else 0
+                   yl = box2[1]-m if (box2[1]-m)>=0 else 0
+                   xr = box2[2]+m if (box2[2]+m)<=sizes[1]-1 else sizes[1]-1
+                   yr = box2[3]+m if (box2[3]+m)<=sizes[0]-1 else sizes[0]-1
+                   box22 = [xl,yl,xr,yr]
+                   for d in range(len(box22)):
+                    box22[d] = math.ceil(box22[d]/stride1[i])
+                   weights[box22[0]:box22[2],box22[1]:box22[3]] = 3
+                   noise[box22[0]:box22[2],box22[1]:box22[3]] = -15
+                   weights = weights.max(weight1)
+                   noise = noise.min(noise1)
+                 weights = torch.sigmoid(weights)
+
+                #else:
+                 #   weights = torch.ones(featmap_sizes[i][0], featmap_sizes[i][1], dtype=torch.float32,
+                  #                    device=dev)
+
+
+                   # noise = torch.zeros(featmap_sizes[i][0], featmap_sizes[i][1], dtype=torch.float32,
+                    #                  device=dev)
+
+                 save_feature_weight.append(weights)
+                 save_noise.append(noise)
+            feature_target.append(save_feature_weight)
+            noise_target.append(save_noise)
+        #print(feature_target[0][7].shape,len(feature_target))
+        return feature_target, noise_target
+
+    def loss_features(self, weights, feature_target):
+        loss = []
+        loss1 = []
+        s = 0
+        s1 = 0
+        #print((weights[0].shape)[0])
+        for i in range(len(feature_target)):
+            for j in range(len(feature_target[0])):
+                #print(((weights[i])[j]).shape,(feature_target[i])[j].shape)
+                out_put = F.cosine_similarity(((weights[i])[j]), (feature_target[i])[j], dim=-1)
+                out_put = torch.mean(out_put)
+                out = abs((weights[i])[j]-(feature_target[i])[j])
+                s1 = s1+(out.sum()/(out.shape[0]*out.shape[1]))
+                loss.append(abs(out_put))
+                #loss1.append(abs(out_put1))
+        for i in range(len(loss)):
+            s = s + loss[i]
+        s = s / len(loss)
+        s1 = s1/( (len(loss)*10))
+        #print("s1:",s1)
+        s = ((1-s)*5)+(s1)
+        weights.clear()
+        return s
+
+    def loss_B(self, weights, feature_target):
+        loss = []
+        loss1 = []
+        s = 0
+        s1 = 0
+        p=0.0001
+        #print(len(weights),len(feature_target[0]),(weights[0][0][0].shape))
+        for i in range(len(feature_target)):
+            for j in range(len(feature_target[0])):
+                mul1 = (weights[i][j][0])*feature_target[i][j]
+                add1 = abs(weights[i][j][0])+abs(feature_target[i][j])
+                out_up = torch.sigmoid(mul1)+p
+                out_down = torch.sigmoid(add1)+p
+                out_put = out_up/out_down
+                out_put = 1-out_put
+                out_put = out_put.sum()/(weights[i][j][0].shape[0]*weights[i][j][0].shape[1])
+                #print(out_put)
+                loss.append(out_put)
+                #loss1.append(abs(out_put1))
+        for i in range(len(loss)):
+            s = s + loss[i]
+        s = (5*s)/ len(loss)
+        print("s:",s)
+        weights.clear()
+        return s
     def get_targets(self, cls_scores, mlvl_points, gt_bboxes, gt_labels,
                     img_metas, gt_bboxes_ignore):
         """A wrapper for computing ATSS and FCOS targets for points in multiple
