@@ -1,6 +1,7 @@
 # FBGBNet
 
 ## The code is placed in the master branch.
+![image](https://github.com/user-attachments/assets/9b2095ca-0b58-4a59-ab75-7278fa1643a2)
 
 pytorch == 1.4.0
 
